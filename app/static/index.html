@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ask Your Documents</title>
+<style>
+  :root{--bg:#0b1020;--card:#131a2e;--text:#e8ecf6;--muted:#93a0bd;--accent:#2f7bff}
+  *{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  main{max-width:760px;margin:40px auto;padding:0 16px}
+  h1{font-size:24px;margin:0 0 4px}p.sub{color:var(--muted);margin:0 0 24px}
+  form{display:flex;gap:8px}input[type=text]{flex:1;padding:12px;border-radius:8px;border:1px solid #2a3557;background:var(--card);color:var(--text)}
+  button{padding:12px 18px;border:0;border-radius:8px;background:var(--accent);color:#fff;font-weight:600;cursor:pointer}
+  .card{background:var(--card);border-radius:10px;padding:16px;margin-top:16px}
+  .src{font-size:13px;color:var(--muted);border-top:1px solid #222c48;padding-top:8px;margin-top:8px}
+  .upload{margin-top:24px;color:var(--muted);font-size:14px}
+</style>
+</head>
+<body>
+<main>
+  <h1>Ask Your Documents</h1>
+  <p class="sub">Answers come only from your uploaded files, with sources.</p>
+  <form id="ask"><input id="q" type="text" placeholder="e.g. What is the refund policy?" required><button>Ask</button></form>
+  <div id="out"></div>
+  <div class="upload">Add a document (PDF, TXT, MD): <input id="file" type="file" accept=".pdf,.txt,.md"></div>
+</main>
+<script>
+const out = document.getElementById('out');
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+document.getElementById('ask').onsubmit = async (e) => {
+  e.preventDefault();
+  out.innerHTML = '<div class="card">Thinking…</div>';
+  const r = await fetch('/ask',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({question:document.getElementById('q').value})});
+  const d = await r.json();
+  const src = (d.sources||[]).map(s=>`<div class="src">[${s.ref}] ${esc(s.source)}${s.page?' · p.'+s.page:''} — ${esc(s.snippet)}…</div>`).join('');
+  out.innerHTML = `<div class="card">${esc(d.answer||d.detail||'Error')}${src}</div>`;
+};
+document.getElementById('file').onchange = async (e) => {
+  const fd = new FormData(); fd.append('file', e.target.files[0]);
+  const r = await fetch('/documents',{method:'POST',body:fd}); const d = await r.json();
+  out.innerHTML = `<div class="card">Indexed ${esc(d.uploaded||'')}: ${d.chunks_indexed||0} chunks total.</div>`;
+};
+</script>
+</body>
+</html>
